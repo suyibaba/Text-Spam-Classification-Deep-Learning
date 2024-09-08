@@ -1,0 +1,70 @@
+!pip install nltk
+
+import nltk
+
+nltk.download('stopwords')
+nltk.download('punkt')
+
+from nltk.corpus import stopwords
+
+nltk.download('wordnet')
+from nltk.stem import WordNetLemmatizer
+lemmatizer = WordNetLemmatizer()
+
+
+
+
+
+import pandas as pd
+import os
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import scale
+
+#Load Spam Data and review content
+spam_data = pd.read_csv("Spam-Classification.csv")
+
+print("\nLoaded Data :\n------------------------------------")
+print(spam_data.head())
+
+#Separated feature and target data
+spam_classes_raw = spam_data["CLASS"]
+spam_messages = spam_data["SMS"]
+
+
+import nltk
+import tensorflow as tf
+
+#Custom tokenizer to remove stopwords and use lemmatization
+def customtokenize(str):
+    #Split string as tokens
+    tokens=nltk.word_tokenize(str)
+    #Filter for stopwords
+    nostop = list(filter(lambda token: token not in stopwords.words('english'), tokens))
+    #Perform lemmatization
+    lemmatized=[lemmatizer.lemmatize(word) for word in nostop ]
+    return lemmatized
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+#Build a TF-IDF Vectorizer model
+vectorizer = TfidfVectorizer(tokenizer=customtokenize)
+
+#Transform feature input to TF-IDF
+tfidf=vectorizer.fit_transform(spam_messages)
+#Convert TF-IDF to numpy array
+tfidf_array = tfidf.toarray()
+
+#Build a label encoder for target variable to convert strings to numeric values.
+from sklearn import preprocessing
+label_encoder = preprocessing.LabelEncoder()
+spam_classes = label_encoder.fit_transform(
+                                spam_classes_raw)
+
+#Convert target to one-hot encoding vector
+spam_classes = tf.keras.utils.to_categorical(spam_classes,2)
+
+print("TF-IDF Matrix Shape : ", tfidf.shape)
+print("One-hot Encoding Shape : ", spam_classes.shape)
+
+X_train,X_test,Y_train,Y_test = train_test_split( tfidf_array, spam_classes, test_size=0.10)
